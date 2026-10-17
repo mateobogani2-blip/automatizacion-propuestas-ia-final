@@ -9,7 +9,7 @@ Proyecto final del curso de AI Automation. Es un flujo en **n8n** que recibe con
 | Recurso | Enlace |
 |---|---|
 | Base de datos en Notion (solo lectura) | https://sponge-anger-cd7.notion.site/Agencia-IA-Sistema-de-propuestas-3ea0c8cb1e01804980a9f2d4e4f7c90e |
-| Video demo (3 min) | PEGAR_LINK_VIDEO |
+| Video demo (3 min) | https://www.youtube.com/watch?v=Eq8Sba_kAlA |
 | Diagrama de arquitectura (PDF) | [docs/arquitectura.pdf](docs/arquitectura.pdf) |
 | Flujo de n8n (JSON) | [flujo/propuestas-ia-agencia.json](flujo/propuestas-ia-agencia.json) |
 
