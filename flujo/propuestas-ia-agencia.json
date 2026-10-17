@@ -1,0 +1,862 @@
+{
+  "name": "Propuestas IA - Agencia",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ee02de19-77b0-4768-bb2c-aafe7cce16a2",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -112,
+        -544
+      ],
+      "id": "249aeafe-5ae6-4cac-b19b-cd549aa52d2c",
+      "name": "Cliente existe?"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nueva-consulta",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        -400
+      ],
+      "id": "419630c0-8d11-4687-b820-96419fd35fec",
+      "name": "Recibir Consulta",
+      "webhookId": "8efa69f1-3572-48b2-ab3a-12297af88e08"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "da6feebc-850f-4b1d-9c3f-a3d701747ac9",
+              "leftValue": "={{ $json.body.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "85e137e1-7734-4332-98f6-c3cf79ef58f1",
+              "leftValue": "={{ $json.body.mensaje }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        -400
+      ],
+      "id": "3647b3b5-a4f4-412a-81e9-01beb3b9d160",
+      "name": "Datos completos"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "ea17f761-f6bd-40ad-9619-c9871984afba",
+          "mode": "list",
+          "cachedResultName": "Clientes",
+          "cachedResultUrl": "https://app.notion.com/p/0f4723669b424fbf8a2f23e75d6cd713"
+        },
+        "limit": 1,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Email|email",
+              "condition": "equals",
+              "richTextValue": "={{ $('Recibir Consulta').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        -416
+      ],
+      "id": "39848045-6bd0-4410-a498-acdc9bac238f",
+      "name": "Busca cliente por mail",
+      "alwaysOutputData": true,
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-5-5",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Sos el asistente comercial de una agencia de marketing digital.\nAnalizá la consulta de este cliente y devolvé SOLO un JSON válido, sin texto extra ni backticks, con estas claves:\n- \"servicio\": uno de \"SEO\", \"Redes\", \"Ads\", \"Web\"\n- \"presupuesto\": número estimado en USD (0 si no se menciona)\n- \"plazo\": texto breve\n- \"borrador\": propuesta comercial de máximo 150 palabras, tono cordial, dirigida al cliente\n\nCliente: {{ $('Recibir Consulta').item.json.body.nombre }} ({{ $('Recibir Consulta').item.json.body.empresa }})\nConsulta: {{ $('Recibir Consulta').item.json.body.mensaje }}\nFirmá siempre como \"Equipo Comercial\" de la agencia. No uses corchetes ni campos entre [ ] como [Nombre]: el texto debe estar listo para enviar."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 2500
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -208
+      ],
+      "id": "7e49247b-8de3-47b3-b00b-f91ce1168dc3",
+      "name": "Claude redacta propuesta",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const bloques = $input.item.json.content || [];\nconst bloque = bloques.find(b => b.type === 'text');\n\nif (!bloque) {\n  throw new Error('La IA no devolvió texto. Revisar max tokens o thinking.');\n}\n\nconst limpio = bloque.text.replace(/```json|```/g, '').trim();\nconst data = JSON.parse(limpio);\n\nreturn {\n  json: {\n    servicio: data.servicio,\n    presupuesto: Number(data.presupuesto) || 0,\n    plazo: data.plazo,\n    borrador: data.borrador\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -432
+      ],
+      "id": "398eb4c1-abd5-43c5-9858-0421ff9b1619",
+      "name": "Respuesta IA"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Registrar propuesta pendiente').item.json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "=Servicio detectado|select",
+              "selectValue": "={{ $json.servicio }}"
+            },
+            {
+              "key": "=Presupuesto estimado|number",
+              "numberValue": "={{ $json.presupuesto }}"
+            },
+            {
+              "key": "=Plazo|rich_text",
+              "textContent": "={{ $json.plazo }}"
+            },
+            {
+              "key": "=Borrador de propuesta|rich_text",
+              "textContent": "={{ $json.borrador }}"
+            },
+            {
+              "key": "=Estado|select",
+              "selectValue": "=Procesado por IA"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        656,
+        -432
+      ],
+      "id": "74bd1edc-f58d-48e4-9fb3-8be56a9795e3",
+      "name": "Guarda resultado IA",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "botines.mbr@gmail.com",
+        "subject": "=Aprobar propuesta:{{$('Recibir Consulta').item.json.body.empresa }}",
+        "message": "=     La IA redactó este borrador para {{ $('Recibir Consulta').item.json.body.nombre }} ({{ $('Recibir Consulta').item.json.body.empresa }}):\n\n     {{ $('Respuesta IA').item.json.borrador }}\n\n     ¿Se envía al cliente?",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "Aprobar y enviar.",
+            "disapproveLabel": "Rechazar"
+          }
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        -432
+      ],
+      "id": "10652d17-66d8-4b5b-9420-ea29e92663de",
+      "name": "Pedido de aprobación por mail",
+      "webhookId": "b52751b6-71a2-4fba-9e69-83f4e5f9c65f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "C6BBOUlUFtaXGBcq",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cecd0218-e857-404c-8111-4fda8124054a",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1024,
+        -432
+      ],
+      "id": "94d9063c-41e2-4be0-bc71-1fe776c578ce",
+      "name": "Aprobó"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Registrar propuesta pendiente').item.json.id.trim() }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Estado|select",
+              "selectValue": "Aprobado por Humano"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        1184,
+        -464
+      ],
+      "id": "4f5185f8-4505-4ec3-8bf0-1e6a32e2d4e5",
+      "name": "Marcar aprobado",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Recibir Consulta').item.json.body.email }}",
+        "subject": "=Propuesta para {{ $('Recibir Consulta').item.json.body.empresa }}",
+        "emailType": "text",
+        "message": "={{ $('Respuesta IA').item.json.borrador }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        -464
+      ],
+      "id": "329c13a8-2705-4f58-8b62-0bb5012809c6",
+      "name": "Enviar propuesta al cliente",
+      "webhookId": "af4a6815-9ed1-4fb8-b8f4-d9589aa56c6f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "C6BBOUlUFtaXGBcq",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Registrar propuesta pendiente').item.json.id.trim() }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Estado|select",
+              "selectValue": "Enviado"
+            },
+            {
+              "key": "Thread ID|rich_text",
+              "textContent": "={{ $json.threadId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        -464
+      ],
+      "id": "d13633fd-9efd-4205-972a-c2a1af4f99b3",
+      "name": "Marcar enviado y ID",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Registrar propuesta pendiente').item.json.id.trim() }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Estado|select",
+              "selectValue": "Rechazado"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        1152,
+        -192
+      ],
+      "id": "e6e9dc6b-024c-4621-af64-fbb2c8d5b972",
+      "name": "Marcar rechazado",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "29630c8a-9d4b-49ef-8131-8ab461fd128b",
+          "mode": "list",
+          "cachedResultName": "Propuestas",
+          "cachedResultUrl": "https://app.notion.com/p/3a3f512ea1fe482285183fffe2cb244e"
+        },
+        "title": "={{'PROP-' + $now.toFormat('yyyyLLdd-HHmmss') }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Consulta original|rich_text",
+              "textContent": "={{ $('Recibir Consulta').item.json.body.mensaje }}"
+            },
+            {
+              "key": "Estado|select",
+              "selectValue": "Pendiente"
+            },
+            {
+              "key": "Cliente|relation",
+              "relationValue": [
+                "={{ $json.id }}"
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        176,
+        -592
+      ],
+      "id": "802ea78f-9d63-44f3-a50f-4a4de2c78e73",
+      "name": "Registrar propuesta pendiente",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "ea17f761-f6bd-40ad-9619-c9871984afba",
+          "mode": "list",
+          "cachedResultName": "Clientes",
+          "cachedResultUrl": "https://app.notion.com/p/0f4723669b424fbf8a2f23e75d6cd713"
+        },
+        "title": "={{ $('Recibir Consulta').item.json.body.nombre }} ({{ $('Recibir Consulta').item.json.body.empresa }})",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Email|email",
+              "emailValue": "={{ $('Recibir Consulta').item.json.body.email }}"
+            },
+            {
+              "key": "Teléfono|phone_number",
+              "phoneValue": "={{ $('Recibir Consulta').item.json.body.telefono }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        0,
+        -256
+      ],
+      "id": "0567337c-3427-498c-a91b-dc4372333831",
+      "name": "Crear cliente",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "905bc278-2469-4100-a8e0-27e9080d9692",
+          "mode": "list",
+          "cachedResultName": "Log de errores",
+          "cachedResultUrl": "https://app.notion.com/p/54061ad1381c4cdb9032dec620297094"
+        },
+        "title": "Falló la API de IA",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Nodo que falló|rich_text",
+              "textContent": "Claude redacta propuesta"
+            },
+            {
+              "key": "Mensaje de error|rich_text",
+              "textContent": "=   {{ $json.error?.message || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error)) || 'Error sin detalle' }}"
+            },
+            {
+              "key": "=Propuesta|relation",
+              "relationValue": [
+                "={{ $('Registrar propuesta pendiente').item.json.id }}"
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        592,
+        16
+      ],
+      "id": "2974cf7d-4bdf-43ab-bfd0-7c10bd4e8834",
+      "name": "Registrar error",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $('Registrar propuesta pendiente').item.json.id }}",
+          "mode": "id"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "=Estado|select",
+              "selectValue": "Error"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        816,
+        16
+      ],
+      "id": "7c792309-88b7-467f-bd00-4f25948ad4fd",
+      "name": "Marcar error",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "dataSourceId": {
+          "__rl": true,
+          "value": "905bc278-2469-4100-a8e0-27e9080d9692",
+          "mode": "list",
+          "cachedResultName": "Log de errores",
+          "cachedResultUrl": "https://app.notion.com/p/54061ad1381c4cdb9032dec620297094"
+        },
+        "title": "Consulta Incompleta",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Nodo que falló|rich_text",
+              "textContent": "Datos completos"
+            },
+            {
+              "key": "Mensaje de error|rich_text",
+              "textContent": "={{ 'Faltan datos obligatorios: ' + [!$json.body?.email ? 'email' : null, !$json.body?.mensaje ? 'mensaje' : null].filter(Boolean).join(', ') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        -112
+      ],
+      "id": "3110d4f3-49d8-4d27-b44d-4a6b9d4fd3d1",
+      "name": "Registrar consulta incompleta",
+      "credentials": {
+        "notionApi": {
+          "id": "nc7uDr2EdLranolf",
+          "name": "Notion - Agencia IA"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Recibir Consulta": [
+      {
+        "json": {
+          "headers": {},
+          "params": {},
+          "query": {},
+          "body": {
+            "nombre": "Lucas Flores",
+            "empresa": "Bebidas 221",
+            "email": "botines.mbr+lucas@gmail.com",
+            "telefono": "+5492215550833",
+            "mensaje": "Queremos lanzar una campaña de publicidad paga en Google y Meta para promocionar nuestras bebidas en el verano."
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Cliente existe?": {
+      "main": [
+        [
+          {
+            "node": "Registrar propuesta pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Consulta": {
+      "main": [
+        [
+          {
+            "node": "Datos completos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos completos": {
+      "main": [
+        [
+          {
+            "node": "Busca cliente por mail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar consulta incompleta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca cliente por mail": {
+      "main": [
+        [
+          {
+            "node": "Cliente existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude redacta propuesta": {
+      "main": [
+        [
+          {
+            "node": "Respuesta IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta IA": {
+      "main": [
+        [
+          {
+            "node": "Guarda resultado IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda resultado IA": {
+      "main": [
+        [
+          {
+            "node": "Pedido de aprobación por mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido de aprobación por mail": {
+      "main": [
+        [
+          {
+            "node": "Aprobó",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aprobó": {
+      "main": [
+        [
+          {
+            "node": "Marcar aprobado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar rechazado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar aprobado": {
+      "main": [
+        [
+          {
+            "node": "Enviar propuesta al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar propuesta al cliente": {
+      "main": [
+        [
+          {
+            "node": "Marcar enviado y ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar propuesta pendiente": {
+      "main": [
+        [
+          {
+            "node": "Claude redacta propuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear cliente": {
+      "main": [
+        [
+          {
+            "node": "Registrar propuesta pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar error": {
+      "main": [
+        [
+          {
+            "node": "Marcar error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b4e76821-0464-43f0-a35b-decef9aa26d1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d9133aa21f4f90d1b55894fba63cf61a778e6187a239b348bf7787cbba5288de"
+  },
+  "nodeGroups": [],
+  "id": "81IRskpWTWExe39y",
+  "tags": []
+}
